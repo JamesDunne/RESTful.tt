@@ -1,0 +1,16 @@
+RESTful.tt
+----------
+
+A T4 template to generate C# client code to consume RESTful web services in .NET 3.5SP1 and up.
+
+Written by James Dunne <james.jdunne@gmail.com>
+
+Features:
+---------
+
+* Simple; easy to use
+* Descriptor-driven code generation
+* Synchronous and asynchronous request execution
+  * No dependency on TPL for asynchrony
+* JSON serialization
+* Free of memory leaks

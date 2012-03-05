@@ -1,0 +1,636 @@
+﻿<#@ template debug="true" hostspecific="false" language="C#" #>
+<#@ output extension=".generated.cs" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #><#
+    var emptyParams = new ParameterDescriptor[0];
+
+    // Define our RESTful services and their REST methods:
+    const string calAPI = "/calendar/v3";
+    var svcs = new ServiceDescriptor[]
+    {
+        // Google Calendar service:
+        new ServiceDescriptor()
+        {
+            ClassName = "CalendarServiceClient",
+            Namespace = "Google.V3",
+            DefaultBodyEncoding = BodyEncoding.Json,
+            DefaultRouteStringEncoding = QueryStringEncoding.RFC3986,
+            DefaultQueryStringEncoding = QueryStringEncoding.RFC3986,
+            PerInstanceQueryParameters = new ParameterDescriptor[0],
+            SharedQueryParameters = new ParameterDescriptor[]
+            {
+                new ParameterDescriptor("fields", OptionalValueType.CommaDelimitedString),
+                new ParameterDescriptor("requestorID", "xoauth_requestor_id", OptionalValueType.String)
+            },
+            Methods = new MethodDescriptor[]
+            {
+                // GET methods:
+                new MethodDescriptor()
+                {
+                    MethodName = "GetMyCalendarList",
+                    HttpMethod = "GET",
+                    Route = calAPI + "/users/me/calendarList",
+                    QueryParameters = new ParameterDescriptor[]
+                    {
+                        new ParameterDescriptor("pageToken", OptionalValueType.String),
+                        new ParameterDescriptor("showHidden", OptionalValueType.Boolean)
+                    }
+                },
+                new MethodDescriptor()
+                {
+                    MethodName = "GetMyCalendar",
+                    HttpMethod = "GET",
+                    Route = calAPI + "/users/me/calendarList/{calendarId}",
+                    QueryParameters = new ParameterDescriptor[]
+                    {
+                        new ParameterDescriptor("calendarId", RequiredValueType.String)
+                    }
+                },
+                new MethodDescriptor()
+                {
+                    MethodName = "GetCalendarEvents",
+                    HttpMethod = "GET",
+                    Route = calAPI + "/calendars/{calendarId}/events",
+                    QueryParameters = new ParameterDescriptor[]
+                    {
+                        new ParameterDescriptor("calendarId", RequiredValueType.String),
+                        new ParameterDescriptor("iCalUID", OptionalValueType.String),
+                        new ParameterDescriptor("singleEvents", OptionalValueType.Boolean),
+                        new ParameterDescriptor("showDeleted", OptionalValueType.Boolean),
+                        new ParameterDescriptor("orderBy", OptionalValueType.String),
+                        new ParameterDescriptor("pageToken", OptionalValueType.String),
+                    }
+                },
+                new MethodDescriptor()
+                {
+                    MethodName = "GetCalendarEvent",
+                    HttpMethod = "GET",
+                    Route = calAPI + "/calendars/{calendarId}/events/{eventId}",
+                    QueryParameters = new ParameterDescriptor[]
+                    {
+                        new ParameterDescriptor("calendarId", RequiredValueType.String),
+                        new ParameterDescriptor("eventId", RequiredValueType.String),
+                    }
+                },
+                // POST methods:
+                new MethodDescriptor()
+                {
+                    MethodName = "CreateCalendar",
+                    HttpMethod = "POST",
+                    AcceptsBody = true,
+                    RequiresBody = true,
+                    Route = calAPI + "/calendars",
+                    QueryParameters = new ParameterDescriptor[0]
+                },
+                new MethodDescriptor()
+                {
+                    MethodName = "CreateCalendarList",
+                    HttpMethod = "POST",
+                    AcceptsBody = true,
+                    RequiresBody = true,
+                    Route = calAPI + "/users/me/calendarList",
+                    QueryParameters = new ParameterDescriptor[0]
+                },
+                new MethodDescriptor()
+                {
+                    MethodName = "CreateEvent",
+                    HttpMethod = "POST",
+                    AcceptsBody = true,
+                    RequiresBody = true,
+                    Route = calAPI + "/calendars/{calendarId}/events",
+                    QueryParameters = new ParameterDescriptor[]
+                    {
+                        new ParameterDescriptor("calendarId", RequiredValueType.String)
+                    }
+                },
+                new MethodDescriptor()
+                {
+                    MethodName = "ImportEvent",
+                    HttpMethod = "POST",
+                    AcceptsBody = true,
+                    RequiresBody = true,
+                    Route = calAPI + "/calendars/{calendarId}/events/import",
+                    QueryParameters = new ParameterDescriptor[]
+                    {
+                        new ParameterDescriptor("calendarId", RequiredValueType.String)
+                    }
+                },
+                // PUT methods:
+                new MethodDescriptor()
+                {
+                    MethodName = "UpdateCalendar",
+                    HttpMethod = "PUT",
+                    AcceptsBody = true,
+                    RequiresBody = true,
+                    Route = calAPI + "/calendars/{calendarId}",
+                    QueryParameters = new ParameterDescriptor[]
+                    {
+                        new ParameterDescriptor("calendarId", RequiredValueType.String)
+                    }
+                },
+                new MethodDescriptor()
+                {
+                    MethodName = "UpdateEvent",
+                    HttpMethod = "PUT",
+                    AcceptsBody = true,
+                    RequiresBody = true,
+                    Route = calAPI + "/calendars/{calendarId}/events/{eventId}",
+                    QueryParameters = new ParameterDescriptor[]
+                    {
+                        new ParameterDescriptor("calendarId", RequiredValueType.String),
+                        new ParameterDescriptor("eventId", RequiredValueType.String)
+                    }
+                },
+                // DELETE methods:
+                new MethodDescriptor()
+                {
+                    MethodName = "DeleteCalendar",
+                    HttpMethod = "DELETE",
+                    NoResponse = true,
+                    Route = calAPI + "/calendars/{calendarId}",
+                    ExcludeParameterNames = new string[] { "fields" },
+                    QueryParameters = new ParameterDescriptor[]
+                    {
+                        new ParameterDescriptor("calendarId", RequiredValueType.String)
+                    }
+                },
+                new MethodDescriptor()
+                {
+                    MethodName = "DeleteEvent",
+                    HttpMethod = "DELETE",
+                    NoResponse = true,
+                    Route = calAPI + "/calendars/{calendarId}/events/{eventId}",
+                    ExcludeParameterNames = new string[] { "fields" },
+                    QueryParameters = new ParameterDescriptor[]
+                    {
+                        new ParameterDescriptor("calendarId", RequiredValueType.String),
+                        new ParameterDescriptor("eventId", RequiredValueType.String),
+                    }
+                },
+                new MethodDescriptor()
+                {
+                    MethodName = "DeleteMyCalendarList",
+                    HttpMethod = "DELETE",
+                    Route = calAPI + "/users/me/calendarList/{calendarId}",
+                    QueryParameters = new ParameterDescriptor[]
+                    {
+                        new ParameterDescriptor("calendarId", RequiredValueType.String)
+                    }
+                },
+            }
+        }
+    };
+#>
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Web;
+using Newtonsoft.Json.Linq;
+using RESTful;
+using RESTful.Authentication;
+
+<#
+    // generate
+    foreach (var svc in svcs)
+    {
+#>
+namespace <#= svc.Namespace #>
+{
+    public sealed class <#= svc.ClassName #>
+    {
+        private Uri baseUri;
+        private IRequestAuthentication authentication;
+
+        public <#= svc.ClassName #>(Uri baseUri, IRequestAuthentication authentication)
+        {
+            this.baseUri = baseUri;
+            this.authentication = authentication;
+        }
+
+        #region Private helpers
+
+        private static string unreservedChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~";
+
+        public static string EncodeRFC3986(string value)
+        {
+            StringBuilder result = new StringBuilder();
+
+            foreach (char symbol in value)
+            {
+                if (unreservedChars.IndexOf(symbol) != -1)
+                {
+                    result.Append(symbol);
+                }
+                else
+                {
+                    result.Append('%' + String.Format("{0:X2}", (int)symbol));
+                }
+            }
+
+            return result.ToString();
+        }
+
+        private Uri constructRequestUri(string route, List<KeyValuePair<string, string>> queryValues)
+        {
+            StringBuilder qb = new StringBuilder(queryValues.Sum(x => x.Key.Length + x.Value.Length + 2));
+
+            bool first = true;
+            foreach (var qp in queryValues)
+            {
+<#
+	    if (svc.DefaultQueryStringEncoding == QueryStringEncoding.RFC3986)
+	    {
+#>
+                qb.AppendFormat("{2}{0}={1}", EncodeRFC3986(qp.Key), EncodeRFC3986(qp.Value), first ? "" : "&");
+<#
+        }
+	    else
+	    {
+#>
+                qb.AppendFormat("{2}{0}={1}", HttpUtility.UrlEncode(qp.Key), HttpUtility.UrlEncode(qp.Value), first ? "" : "&");
+<#
+        }
+#>
+                first = false;
+            }
+
+            var ub = new UriBuilder(baseUri);
+            ub.Path = route;
+            ub.Query = qb.ToString();
+            return ub.Uri;
+        }
+
+        #endregion
+
+        #region RESTful type system
+<#
+        var distinctTypes = (
+            from pm in svc.PerInstanceQueryParameters
+            select pm.Type
+        ).Concat(
+            from pm in svc.SharedQueryParameters
+            select pm.Type
+        ).Concat(
+            from mt in svc.Methods
+            from pm in mt.QueryParameters
+            select pm.Type
+        ).Distinct();
+
+        foreach (var cvt in distinctTypes)
+        {
+#>
+
+        private bool <#= cvt.IsSuppliedName #>(<#= csharpType(cvt.CLRType) #> value)
+        {
+            <#= cvt.BoolIsSuppliedFunction.Replace("\n", "\n            ") #>
+        }
+
+        private string <#= cvt.EncodeStringName #>(<#= csharpType(cvt.CLRType) #> value)
+        {
+            <#= cvt.EncodeStringFunction.Replace("\n", "\n            ") #>
+        }
+<#
+        } // foreach (var ty in distinctTypes)
+#>
+
+        #endregion
+
+        #region Instance-level query parameters
+<#
+        foreach (var pm in svc.PerInstanceQueryParameters)
+        {
+#>
+
+        public <#= csharpType(pm.Type.CLRType) #> <#= pm.Name #> { get; set; }
+<#
+        } // foreach (var pm in svc.PerInstanceQueryParameters)
+#>
+
+        #endregion
+
+        #region API Methods
+<#
+        foreach (var mt in svc.Methods)
+        {
+            var mtPms = mt.QueryParameters.ToList();
+            var pmDecls = new List<ParameterDescriptor>(mtPms);
+            if (mt.AcceptsBody)
+	            pmDecls.Add(new ParameterDescriptor("body", "", mt.RequiresBody ? (RequestValueType)RequiredValueType.Object : (RequestValueType)OptionalValueType.Object));
+            var usableSharedPms = svc.SharedQueryParameters.Where(pm => !mt.ExcludeParameterNames.Contains(pm.QueryName)).ToList();
+            mtPms.AddRange(usableSharedPms);
+            pmDecls.AddRange(usableSharedPms);
+
+            var allPms = new List<ParameterDescriptor>(mtPms);
+            allPms.AddRange(svc.PerInstanceQueryParameters.Where(pm => !mt.ExcludeParameterNames.Contains(pm.QueryName)));
+#>
+
+        public RestfulServiceRequest <#= mt.MethodName #>(<#= parameterDeclList(pmDecls) #>)
+        {
+<#
+            bool hasRouteValues = false;
+            var queryParams = new Dictionary<string, ParameterDescriptor>(allPms.Count);
+
+            string route = "\"" + mt.Route + "\"";
+            foreach (var pm in allPms)
+            {
+                string repl = "{" + pm.QueryName + "}";
+                if (!route.Contains(repl))
+                {
+                    queryParams.Add(pm.QueryName, pm);
+                    continue;
+                }
+
+                if (pm.Type.IsOptional)
+                {
+                    Error("Route parameter cannot be optional.");
+                    return null;
+                }
+
+                hasRouteValues = true;
+
+                // Build the C# code to inject route values into the route:
+                if (svc.DefaultRouteStringEncoding == QueryStringEncoding.RFC3986)
+                {
+                    route = route.Replace(repl, "\" + EncodeRFC3986(r_" + pm.Name + ") + \"");
+                }
+                else
+                {
+                    route = route.Replace(repl, "\" + HttpUtility.UrlPathEncode(r_" + pm.Name + ") + \"");
+                }
+#>
+            string r_<#= pm.Name #>;
+            if (!<#= pm.Type.IsSuppliedName #>(<#= pm.Name #>)) throw new ArgumentNullException("<#= pm.Name #>");
+            else r_<#= pm.Name #> = <#= pm.Type.EncodeStringName #>(<#= pm.Name #>);
+<#
+            }
+
+            if (route.EndsWith(" + \"\"")) route = route.Substring(0, route.Length - 5);
+
+            if (queryParams.Count > 0)
+            {
+                if (hasRouteValues)
+                {
+#>
+
+<#
+                }
+#>
+            var _queryValues = new List<KeyValuePair<string, string>>(<#= queryParams.Count #>);
+<#
+                // Check IsSupplied for each query parameter:
+                foreach (var pm in queryParams.Values)
+                {
+                    if (!pm.Type.IsOptional)
+                    {
+#>
+            if (!<#= pm.Type.IsSuppliedName #>(<#= pm.Name #>)) throw new ArgumentNullException("<#= pm.Name #>");
+            else _queryValues.Add(new KeyValuePair<string, string>("<#= pm.QueryName #>", <#= pm.Type.EncodeStringName #>(<#= pm.Name #>)));
+<#
+                    }
+                    else
+                    {
+#>
+            if (<#= pm.Type.IsSuppliedName #>(<#= pm.Name #>))
+                _queryValues.Add(new KeyValuePair<string, string>("<#= pm.QueryName #>", <#= pm.Type.EncodeStringName #>(<#= pm.Name #>)));
+<#
+                    }
+                } // foreach (var pm in allPms)
+            }
+
+            if (mt.AcceptsBody && mt.RequiresBody)
+            {
+#>
+
+            if (body == null) throw new ArgumentNullException("body");
+<#
+            }
+#>
+
+            var requestUri = constructRequestUri(<#= route #>, _queryValues);
+            var req = (HttpWebRequest)HttpWebRequest.Create(requestUri);
+            req.Method = "<#= mt.HttpMethod #>";
+            // TODO: accept gzip compressed responses.
+            //req.Accept = "application/json";
+            // TODO: no longer hard-code JSON.
+            req.ContentType = "application/json";
+<#
+            if (mt.AcceptsBody)
+            {
+#>
+
+            return new RestfulServiceRequest(authentication, req, body);
+<#
+            } // if (mt.AcceptsBody)
+            else
+            {
+#>
+
+            return new RestfulServiceRequest(authentication, req);
+<#
+            } // if (mt.AcceptsBody) else
+#>
+        }
+<#
+        } // foreach (var mt in svcs.Methods)
+#>
+
+        #endregion
+    }
+}<#
+    } // foreach (var svc in svcs)
+#><#+
+
+    // static methods for the T4:
+
+    static string parameterDeclList(IEnumerable<ParameterDescriptor> pms)
+    {
+        bool first = true;
+        StringBuilder sbParams = new StringBuilder();
+        foreach (var pm in pms)
+        {
+            if (!first) sbParams.Append(", ");
+            else first = false;
+            sbParams.AppendFormat("{2}{0} {1}", csharpType(pm.Type.CLRType), pm.Name, pm.Type.IsOptional ? "[Optional] " : "");
+        }
+        return sbParams.ToString();
+    }
+
+    static string csharpType(Type ty)
+    {
+        if (ty == typeof(int)) return "int";
+        else if (ty == typeof(string)) return "string";
+        else if (ty == typeof(bool)) return "bool";
+        else if (ty == typeof(string[])) return "string[]";
+        else if (ty == typeof(object)) return "object";
+        if (ty.IsGenericType)
+        {
+            if (ty.GetGenericTypeDefinition() == typeof(Nullable<>))
+            {
+                return csharpType(ty.GetGenericArguments()[0]) + "?";
+            }
+            else
+                return String.Concat("global::", ty.Namespace, ".", ty.Name.Remove(ty.Name.Length - 2), "<", String.Join(", ", ty.GetGenericArguments().Select(arg => csharpType(arg)).ToArray()), ">");
+        }
+        return "global::" + ty.FullName;
+    }
+
+    enum BodyEncoding
+    {
+        Json,
+        Xml,
+        UrlEncoded
+    }
+
+    enum QueryStringEncoding
+    {
+        UrlEncode,
+        RFC3986
+	}
+
+    // types
+
+    sealed class ServiceDescriptor
+    {
+        public string ClassName { get; set; }
+        public string Namespace { get; set; }
+        public KeyValuePair<string, string>[] HttpHeaders { get; set; }
+        public BodyEncoding DefaultBodyEncoding { get; set; }
+        public QueryStringEncoding DefaultRouteStringEncoding { get; set; }
+        public QueryStringEncoding DefaultQueryStringEncoding { get; set; }
+        public MethodDescriptor[] Methods { get; set; }
+        public ParameterDescriptor[] PerInstanceQueryParameters { get; set; }
+        public ParameterDescriptor[] SharedQueryParameters { get; set; }
+        public ServiceDescriptor()
+        {
+            this.Methods = new MethodDescriptor[0];
+            this.PerInstanceQueryParameters = new ParameterDescriptor[0];
+            this.SharedQueryParameters = new ParameterDescriptor[0];
+        }
+    }
+
+    abstract class RequestValueType
+    {
+        public string UniqueName { get; private set; }
+
+        public Type CLRType { get; private set; }
+
+        public abstract bool IsOptional { get; }
+
+        public string BoolIsSuppliedFunction { get; private set; }
+        public string EncodeStringFunction { get; private set; }
+
+        public string IsSuppliedName { get { return "_" + UniqueName + "_isSupplied"; } }
+        public string EncodeStringName { get { return "_" + UniqueName + "_encodeString"; } }
+
+        protected RequestValueType(string uniqueName, Type clrType, string boolIsSuppliedFunction, string encodeStringFunction)
+        {
+            this.UniqueName = uniqueName;
+            this.CLRType = clrType;
+            this.BoolIsSuppliedFunction = boolIsSuppliedFunction;
+            this.EncodeStringFunction = encodeStringFunction;
+        }
+    }
+    
+    sealed class RequiredValueType : RequestValueType
+    {
+	    protected RequiredValueType(string uniqueName, Type clrType, string boolIsSuppliedFunction, string encodeStringFunction)
+			: base("required_" + uniqueName, clrType, boolIsSuppliedFunction, encodeStringFunction)
+        {
+	    }
+
+        public override bool IsOptional { get { return false; } }
+
+	    public static readonly RequiredValueType Int =
+            new RequiredValueType("int", typeof(int), @"return true;", @"return value.ToString();");
+
+        public static readonly RequiredValueType String =
+            new RequiredValueType("string", typeof(string), @"return value != null;", @"return value;");
+
+        public static readonly RequiredValueType Boolean =
+            new RequiredValueType("bool", typeof(bool), @"return true;", @"return value.ToString().ToLower();");
+
+        public static readonly RequiredValueType JsonDictionary =
+            new RequiredValueType("jsonDictionary", typeof(Dictionary<string, object>), @"return value != null;", @"return String.Empty; // TODO");
+
+	    public static readonly RequiredValueType Object =
+            new RequiredValueType("object", typeof(object), @"return value != null;", @"return String.Empty; // TODO");
+
+        public static readonly RequiredValueType CommaDelimitedString =
+            new RequiredValueType("commaDelimitedString", typeof(string[]), @"return value != null;", @"return String.Join("","", value);");
+    }
+	
+    sealed class OptionalValueType : RequestValueType
+    {
+	    protected OptionalValueType(string uniqueName, Type clrType, string boolIsSuppliedFunction, string encodeStringFunction)
+		    : base("optional_" + uniqueName, clrType, boolIsSuppliedFunction, encodeStringFunction)
+        {
+	    }
+
+        public override bool IsOptional { get { return true; } }
+
+	    public static readonly OptionalValueType Int =
+            new OptionalValueType("int", typeof(int?), @"return value.HasValue;", @"return value.Value.ToString();");
+
+        public static readonly OptionalValueType String =
+            new OptionalValueType("string", typeof(string), @"return value != null;", @"return value;");
+
+        public static readonly OptionalValueType Boolean =
+            new OptionalValueType("bool", typeof(bool?), @"return value.HasValue;", @"return value.ToString().ToLower();");
+
+		public static readonly OptionalValueType DateTimeOffset =
+            new OptionalValueType("datetimeoffset", typeof(DateTimeOffset?), @"return value.HasValue;", @"return value.Value.ToString(""yyyy-MM-dd'T'hh:mm:ss.ssszzz"");");
+
+	    public static readonly OptionalValueType JsonDictionary =
+            new OptionalValueType("jsonDictionary", typeof(Dictionary<string, object>), @"return value != null;", @"return String.Empty; // TODO");
+            
+	    public static readonly OptionalValueType Object =
+            new OptionalValueType("object", typeof(object), @"return value != null;", @"return String.Empty; // TODO");
+
+        public static readonly OptionalValueType CommaDelimitedString =
+            new OptionalValueType("commaDelimitedString", typeof(string[]), @"return value != null;", @"return String.Join("","", value);");
+    }
+
+    sealed class ParameterDescriptor
+    {
+        public string Name { get; private set; }
+        public string QueryName { get; private set; }
+        public RequestValueType Type { get; private set; }
+
+	    public ParameterDescriptor(string name, string queryName, RequestValueType type)
+        {
+            this.Name = name;
+            this.QueryName = queryName;
+            this.Type = type;
+        }
+
+        public ParameterDescriptor(string queryName, RequestValueType type)
+			: this(queryName, queryName, type)
+        {
+        }
+    }
+
+    sealed class MethodDescriptor
+    {
+        public string MethodName { get; set; }
+        public string HttpMethod { get; set; }
+        public string Route { get; set; }
+        public BodyEncoding? BodyEncoding { get; set; }
+        public bool AcceptsBody { get; set; }
+        public bool RequiresBody { get; set; }
+        public bool NoResponse { get; set; }
+        public ParameterDescriptor[] QueryParameters { get; set; }
+        public string[] ExcludeParameterNames { get; set; }
+        public MethodDescriptor()
+        {
+            this.QueryParameters = new ParameterDescriptor[0];
+            this.ExcludeParameterNames = new string[0];
+        }
+    }
+#>
