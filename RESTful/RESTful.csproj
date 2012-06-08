@@ -36,8 +36,11 @@
     <StartupObject />
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Newtonsoft.Json.Net35">
-      <HintPath>..\References\Newtonsoft.Json.Net35.dll</HintPath>
+    <Reference Include="BouncyCastle.Crypto">
+      <HintPath>..\References\BouncyCastle.Crypto.dll</HintPath>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\References\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -48,26 +51,52 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Authentication\IRequestAuthentication.cs" />
-    <Compile Include="Authentication\OAuthThreeLeggedAuthentication.cs" />
-    <Compile Include="Authentication\OAuthTwoLeggedAuthentication.cs" />
-    <Compile Include="Authentication\OAuthUtilities.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Restful.generated.cs">
+    <Compile Include="Extensions\StringExtensions.cs" />
+    <Compile Include="Google\Restful.generated.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>Restful.tt</DependentUpon>
     </Compile>
+    <Compile Include="Pearson\ExpandableLinks.cs" />
+    <Compile Include="Google\GData\V1_4\OAuth10GData14.cs" />
+    <Compile Include="Google\OAuth10.cs" />
+    <Compile Include="InvalidOAuth20AccessTokenException.cs" />
+    <Compile Include="IRequestAuthentication.cs" />
+    <Compile Include="NullRequestAuthentication.cs" />
+    <Compile Include="OAuth20AccessToken.cs" />
+    <Compile Include="OAuth20AssertionClient.cs" />
+    <Compile Include="OAuth20ConstructedAssertion.cs" />
+    <Compile Include="OAuthUtilities.cs" />
+    <Compile Include="Pearson\AccessTokens.cs" />
+    <Compile Include="Pearson\LearningStudio\CourseList.cs" />
+    <Compile Include="Pearson\LearningStudio\DocumentCategoryList.cs" />
+    <Compile Include="Pearson\LearningStudio\DocumentList.cs" />
+    <Compile Include="Pearson\LearningStudio\LearningStudioClients.cs" />
+    <Compile Include="Pearson\OAuth10.cs" />
+    <Compile Include="Pearson\OAuth20.cs" />
+    <Compile Include="Pearson\OAuth20AssertionBuilder.cs" />
+    <Compile Include="Pearson\Restful.generated.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Restful.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RestfulServiceRequest.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Restful.tt">
-      <Generator>TextTemplatingFileGenerator</Generator>
-      <LastGenOutput>Restful.generated.cs</LastGenOutput>
-    </None>
+    <Compile Include="RestfulServiceResponse.cs" />
   </ItemGroup>
   <ItemGroup>
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Google\Restful.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Restful.generated.cs</LastGenOutput>
+    </None>
+    <None Include="Pearson\Restful.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Restful.generated.cs</LastGenOutput>
+    </None>
+    <None Include="Restful.ttinclude" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

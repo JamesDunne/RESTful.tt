@@ -6,7 +6,7 @@ using System.Text;
 using System.Globalization;
 using System.Web;
 
-namespace RESTful.Authentication
+namespace WellDunne.REST
 {
     internal static class OAuthUtilities
     {
@@ -16,6 +16,7 @@ namespace RESTful.Authentication
         public enum SignatureTypes
         {
             HMACSHA1,
+            CMACAES,
             PLAINTEXT,
             RSASHA1
         }
@@ -23,10 +24,10 @@ namespace RESTful.Authentication
         /// <summary>
         /// Provides an internal structure to sort the query parameter
         /// </summary>
-        private class QueryParameter
+        private sealed class QueryParameter
         {
-            private string name = null;
-            private string value = null;
+            private readonly string name = null;
+            private readonly string value = null;
 
             public QueryParameter(string name, string value)
             {
@@ -34,15 +35,8 @@ namespace RESTful.Authentication
                 this.value = value;
             }
 
-            public string Name
-            {
-                get { return name; }
-            }
-
-            public string Value
-            {
-                get { return value; }
-            }
+            public string Name { get { return name; } }
+            public string Value { get { return value; } }
         }
 
         /// <summary>
@@ -72,7 +66,7 @@ namespace RESTful.Authentication
 
         //
         // List of know and used oauth parameters' names
-        //        
+        //
         private const string OAuthConsumerKeyKey = "oauth_consumer_key";
         private const string OAuthCallbackKey = "oauth_callback";
         private const string OAuthVersionKey = "oauth_version";
@@ -84,6 +78,7 @@ namespace RESTful.Authentication
         private const string OAuthTokenSecretKey = "oauth_token_secret";
 
         private const string HMACSHA1SignatureType = "HMAC-SHA1";
+        private const string CMACAESSignatureType = "CMAC-AES";
         private const string PlainTextSignatureType = "PLAINTEXT";
         private const string RSASHA1SignatureType = "RSA-SHA1";
 
@@ -146,34 +141,32 @@ namespace RESTful.Authentication
         /// <returns>A list of QueryParameter each containing the parameter name and value</returns>
         private static List<QueryParameter> GetQueryParameters(string parameters)
         {
+            if (String.IsNullOrEmpty(parameters)) return null;
             if (parameters.StartsWith("?"))
             {
                 parameters = parameters.Remove(0, 1);
             }
 
-            List<QueryParameter> result = new List<QueryParameter>();
+            string[] p = parameters.Split('&');
+            var result = new List<QueryParameter>(p.Length);
 
-            if (!string.IsNullOrEmpty(parameters))
+            foreach (string s in p)
             {
-                string[] p = parameters.Split('&');
-                foreach (string s in p)
+                if (!string.IsNullOrEmpty(s) && !s.StartsWith(OAuthParameterPrefix))
                 {
-                    if (!string.IsNullOrEmpty(s) && !s.StartsWith(OAuthParameterPrefix))
+                    if (s.IndexOf('=') > -1)
                     {
-                        if (s.IndexOf('=') > -1)
-                        {
-                            string[] temp = s.Split('=');
-                            // now temp[1], the value, might contain encoded data, that would be double encoded later. 
-                            // also it MIGHT contain encoding of the lowercase kind, which throws OAUTH off
-                            // the same is true for the name
-                            string name = HttpUtility.UrlDecode(temp[0]);
-                            string value = HttpUtility.UrlDecode(temp[1]);
-                            result.Add(new QueryParameter(name, value));
-                        }
-                        else
-                        {
-                            result.Add(new QueryParameter(HttpUtility.UrlDecode(s), string.Empty));
-                        }
+                        string[] temp = s.Split('=');
+                        // now temp[1], the value, might contain encoded data, that would be double encoded later. 
+                        // also it MIGHT contain encoding of the lowercase kind, which throws OAUTH off
+                        // the same is true for the name
+                        string name = HttpUtility.UrlDecode(temp[0]);
+                        string value = HttpUtility.UrlDecode(temp[1]);
+                        result.Add(new QueryParameter(name, value));
+                    }
+                    else
+                    {
+                        result.Add(new QueryParameter(HttpUtility.UrlDecode(s), string.Empty));
                     }
                 }
             }
@@ -235,6 +228,42 @@ namespace RESTful.Authentication
             return sb.ToString();
         }
 
+        private static string GenerateSignatureBase(Uri url, string httpMethod, List<QueryParameter> parameters)
+        {
+            parameters.Sort(new QueryParameterComparer());
+
+            string normalizedUrl = EncodingPerRFC3986(url.AbsolutePath);
+            string normalizedRequestParameters = EncodingPerRFC3986(NormalizeRequestParameters(parameters));
+
+            StringBuilder signatureBase = new StringBuilder(httpMethod.Length + normalizedUrl.Length + normalizedRequestParameters.Length + 2);
+            signatureBase.AppendFormat(CultureInfo.InvariantCulture, "{0}&", httpMethod.ToUpper());
+            signatureBase.AppendFormat(CultureInfo.InvariantCulture, "{0}&", normalizedUrl);
+            signatureBase.AppendFormat(CultureInfo.InvariantCulture, "{0}", normalizedRequestParameters);
+
+            return signatureBase.ToString();
+        }
+
+        private static string GenerateSignatureBaseWithUrlScheme(Uri url, string httpMethod, List<QueryParameter> parameters)
+        {
+            parameters.Sort(new QueryParameterComparer());
+
+            string normalizedUrl = string.Format("{0}://{1}", url.Scheme, url.Host);
+            if (!((url.Scheme == "http" && url.Port == 80) || (url.Scheme == "https" && url.Port == 443)))
+            {
+                normalizedUrl += ":" + url.Port;
+            }
+            normalizedUrl += url.AbsolutePath;
+
+            string normalizedRequestParameters = NormalizeRequestParameters(parameters);
+
+            StringBuilder signatureBase = new StringBuilder(httpMethod.Length + normalizedUrl.Length + normalizedRequestParameters.Length + 30);
+            signatureBase.AppendFormat(CultureInfo.InvariantCulture, "{0}&", httpMethod.ToUpper());
+            signatureBase.AppendFormat(CultureInfo.InvariantCulture, "{0}&", EncodingPerRFC3986(normalizedUrl));
+            signatureBase.AppendFormat(CultureInfo.InvariantCulture, "{0}", EncodingPerRFC3986(normalizedRequestParameters));
+
+            return signatureBase.ToString();
+        }
+
         /// <summary>
         /// Generate the signature base that is used to produce the signature
         /// </summary>
@@ -245,8 +274,7 @@ namespace RESTful.Authentication
         /// <param name="httpMethod">The http method used. Must be a valid HTTP method verb (POST,GET,PUT, etc)</param>
         /// <param name="signatureType">The signature type. To use the default values use <see cref="OAuthBase.SignatureTypes">OAuthBase.SignatureTypes</see>.</param>
         /// <returns>The signature base</returns>
-        public static string GenerateSignatureBase(Uri url, string consumerKey, string token, string tokenSecret,
-                                                    string httpMethod, string timeStamp, string nonce, string signatureType)
+        private static string GenerateSignatureBase(Uri url, string consumerKey, string token, string tokenSecret, string httpMethod, string timeStamp, string nonce, string signatureType)
         {
             if (token == null)
             {
@@ -276,7 +304,7 @@ namespace RESTful.Authentication
             string normalizedUrl = null;
             string normalizedRequestParameters = null;
 
-            List<QueryParameter> parameters = GetQueryParameters(url.Query);
+            List<QueryParameter> parameters = GetQueryParameters(url.Query) ?? new List<QueryParameter>(6);
             parameters.Add(new QueryParameter(OAuthVersionKey, OAuthVersion));
             parameters.Add(new QueryParameter(OAuthNonceKey, nonce));
             parameters.Add(new QueryParameter(OAuthTimestampKey, timeStamp));
@@ -347,8 +375,6 @@ namespace RESTful.Authentication
         {
             switch (signatureType)
             {
-                case SignatureTypes.PLAINTEXT:
-                    return HttpUtility.UrlEncode(string.Format("{0}&{1}", consumerSecret, tokenSecret));
                 case SignatureTypes.HMACSHA1:
                     string signatureBase = GenerateSignatureBase(url, consumerKey, token, tokenSecret, httpMethod, timeStamp, nonce, HMACSHA1SignatureType);
 
@@ -358,6 +384,8 @@ namespace RESTful.Authentication
 
                         return GenerateSignatureUsingHash(signatureBase, hmacsha1);
                     }
+                case SignatureTypes.PLAINTEXT:
+                    return HttpUtility.UrlEncode(string.Format("{0}&{1}", consumerSecret, tokenSecret));
                 case SignatureTypes.RSASHA1:
                     throw new NotImplementedException();
                 default:
@@ -403,29 +431,118 @@ namespace RESTful.Authentication
         /// <param name="consumerSecret">The consumer secret</param>
         /// <param name="httpMethod">The http method</param>
         /// <returns>The OAuth authorization header</returns>
-        public static string GenerateHeader(Uri uri, String consumerKey, String consumerSecret, String httpMethod)
-        {
-            return GenerateHeader(uri, consumerKey, consumerSecret, string.Empty, string.Empty, httpMethod);
-        }
-
-        public static string GenerateHeader(Uri uri, String consumerKey, String consumerSecret, String token, String tokenSecret, String httpMethod)
+        public static string GenerateHeaderForGoogle(Uri uri, String consumerKey, String consumerSecret, String httpMethod)
         {
             string timeStamp = GenerateTimeStamp();
             string nonce = GenerateNonce();
 
-            string signature = GenerateSignature(uri, consumerKey, consumerSecret, token, tokenSecret, httpMethod.ToUpper(), timeStamp, nonce);
+            string signature = GenerateSignature(uri, consumerKey, consumerSecret, String.Empty, String.Empty, httpMethod.ToUpper(), timeStamp, nonce, SignatureTypes.HMACSHA1);
 
-            StringBuilder sb = new StringBuilder(150 + nonce.Length + timeStamp.Length + consumerKey.Length + (token ?? "").Length + signature.Length);
+            StringBuilder sb = new StringBuilder(150 + nonce.Length + timeStamp.Length + consumerKey.Length + signature.Length);
             sb.Append("OAuth oauth_version=\"1.0\",");
             sb.AppendFormat("oauth_nonce=\"{0}\",", EncodingPerRFC3986(nonce));
             sb.AppendFormat("oauth_timestamp=\"{0}\",", EncodingPerRFC3986(timeStamp));
             sb.AppendFormat("oauth_consumer_key=\"{0}\",", EncodingPerRFC3986(consumerKey));
-            if (!String.IsNullOrEmpty(token))
-            {
-                sb.AppendFormat("oauth_token=\"{0}\",", EncodingPerRFC3986(token));
-            }
-            sb.Append("oauth_signature_method=\"HMAC-SHA1\",");
+            sb.Append("oauth_signature_method=\"" + HMACSHA1SignatureType + "\",");
             sb.AppendFormat("oauth_signature=\"{0}\"", EncodingPerRFC3986(signature));
+
+            return sb.ToString();
+        }
+
+        public static byte[] GenerateCmac(string key, string msg)
+        {
+            byte[] keyBytes = Encoding.UTF8.GetBytes(key);
+            byte[] msgBytes = Encoding.UTF8.GetBytes(msg);
+
+            var macProvider = new Org.BouncyCastle.Crypto.Macs.CMac(new Org.BouncyCastle.Crypto.Engines.AesFastEngine());
+            macProvider.Init(new Org.BouncyCastle.Crypto.Parameters.KeyParameter(keyBytes));
+            macProvider.Reset();
+
+            macProvider.BlockUpdate(msgBytes, 0, msgBytes.Length);
+            byte[] output = new byte[macProvider.GetMacSize()];
+            macProvider.DoFinal(output, 0);
+
+            return output;
+        }
+
+        /// <summary>
+        /// Generates a BASE64-encoded CMAC-AES digest.
+        /// </summary>
+        /// <param name="key">The secret key used to sign the data.</param>
+        /// <param name="msg">The data to be signed.</param>
+        /// <returns>A CMAC-AES digest.</returns>
+        public static string GenerateCmacBASE64(string key, string msg)
+        {
+            return Convert.ToBase64String(GenerateCmac(key, msg));
+        }
+
+        private static string hexEncode(byte[] arr)
+        {
+            StringBuilder sb = new StringBuilder(arr.Length * 2);
+            for (int i = 0; i < arr.Length; ++i)
+            {
+                sb.AppendFormat("{0:x2}", arr[i]);
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Generates a HEX-encoded CMAC-AES digest.
+        /// </summary>
+        /// <param name="key">The secret key used to sign the data.</param>
+        /// <param name="msg">The data to be signed.</param>
+        /// <returns>A CMAC-AES digest.</returns>
+        public static string GenerateCmacHEX(string key, string msg)
+        {
+            return hexEncode(GenerateCmac(key, msg));
+        }
+
+        public static string GenerateHeaderForPearson(Uri uri, string httpMethod, byte[] body, string applicationId, string consumerKey, string consumerSecret)
+        {
+            // Generate some temporary values:
+            string timeStamp = GenerateTimeStamp();
+            string nonce = GenerateNonce();
+
+            bool hasBody = (body != null) && (String.Equals(httpMethod, "POST", StringComparison.OrdinalIgnoreCase) || String.Equals(httpMethod, "PUT", StringComparison.OrdinalIgnoreCase));
+
+            // Determine the signature base's parameters:
+            var signatureParams = GetQueryParameters(uri.Query) ?? new List<QueryParameter>(5 + (hasBody ? 1 : 0));
+            signatureParams.Add(new QueryParameter("application_id", applicationId));
+            signatureParams.Add(new QueryParameter(OAuthConsumerKeyKey, consumerKey));
+            signatureParams.Add(new QueryParameter(OAuthNonceKey, nonce));
+            signatureParams.Add(new QueryParameter(OAuthSignatureMethodKey, CMACAESSignatureType));
+            signatureParams.Add(new QueryParameter(OAuthTimestampKey, timeStamp));
+
+            // Add the request body to the signature:
+            if (hasBody)
+            {
+                signatureParams.Add(new QueryParameter("body", EncodingPerRFC3986(Convert.ToBase64String(body))));
+            }
+
+            // Generate the signature base:
+            string signatureBase = GenerateSignatureBase(uri, httpMethod.ToUpper(), signatureParams);
+
+            // Sign the signature base with CMAC-AES:
+            string signature = GenerateCmacBASE64(consumerSecret, signatureBase);
+
+            // Encode the values for the OAuth header:
+            string uriValue = uri.AbsoluteUri;
+            string consumerKeyValue = EncodingPerRFC3986(consumerKey);
+            string applicationIdValue = EncodingPerRFC3986(applicationId);
+            string timeStampValue = EncodingPerRFC3986(timeStamp);
+            string nonceValue = EncodingPerRFC3986(nonce);
+            string signatureValue = EncodingPerRFC3986(signature);
+
+            // Piece together the OAuth header:
+            var sb = new StringBuilder(159 + uriValue.Length + consumerKeyValue.Length + applicationIdValue.Length + timeStampValue.Length + nonceValue.Length + signatureValue.Length);
+            sb.AppendFormat("OAuth realm=\"{0}\",oauth_consumer_key=\"{1}\",application_id=\"{2}\",oauth_signature_method=\"CMAC-AES\",oauth_timestamp=\"{3}\",oauth_nonce=\"{4}\",oauth_signature=\"{5}\"",
+                uriValue,
+                consumerKeyValue,
+                applicationIdValue,
+                timeStampValue,
+                nonceValue,
+                signatureValue
+            );
 
             return sb.ToString();
         }

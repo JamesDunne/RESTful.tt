@@ -4,10 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Net;
 using System.Diagnostics;
-using RESTful.Authentication;
 
-namespace RESTful
+namespace WellDunne.REST
 {
+    public delegate object DeserializationDelegate(System.IO.Stream inputStream, System.Type type);
+    public delegate void SerializeDelegate(System.IO.Stream outputStream);
+
     public sealed class RestfulServiceRequest
     {
         private IRequestAuthentication _auth;
@@ -15,28 +17,79 @@ namespace RESTful
         private HttpWebRequest _request;
         public HttpWebRequest Request { get { return _request; } }
 
-        private object _body;
-        public object Body { get { return _body; } }
+        private SerializeDelegate _serializeBody;
+        private DeserializationDelegate _deserializeBody;
 
-        public RestfulServiceRequest(IRequestAuthentication authentication, HttpWebRequest httpWebRequest)
+        public RestfulServiceRequest(IRequestAuthentication authentication, HttpWebRequest httpWebRequest, SerializeDelegate serializeBody, DeserializationDelegate deserializeBody)
         {
             _auth = authentication;
             _request = httpWebRequest;
-            _body = null;
-        }
-
-        public RestfulServiceRequest(IRequestAuthentication authentication, HttpWebRequest httpWebRequest, object body)
-        {
-            _auth = authentication;
-            _request = httpWebRequest;
-            _body = body;
+            _serializeBody = serializeBody;
+            _deserializeBody = deserializeBody;
         }
 
         private void Clear()
         {
             _auth = null;
             _request = null;
-            _body = null;
+            _serializeBody = null;
+            _deserializeBody = null;
+            _bodyBytes = null;
+        }
+
+        private byte[] _bodyBytes;
+        public byte[] SerializedBody { get { return _bodyBytes; } }
+
+        private static readonly Newtonsoft.Json.JsonSerializer _json =
+            Newtonsoft.Json.JsonSerializer.Create(
+                new Newtonsoft.Json.JsonSerializerSettings
+                {
+                    NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore,
+                    Converters = new Newtonsoft.Json.JsonConverter[] {
+                        new Newtonsoft.Json.Converters.IsoDateTimeConverter()
+                    }
+                }
+            );
+
+        public static void SerializeJSON(System.IO.Stream outputStream, object body)
+        {
+            using (var tw = new System.IO.StreamWriter(outputStream, UTF8EncodingNoBOM))
+            using (var jtw = new Newtonsoft.Json.JsonTextWriter(tw))
+            {
+                _json.Serialize(jtw, body);
+            }
+        }
+
+        public static object DeserializeJSON(System.IO.Stream rs, System.Type type)
+        {
+            using (var tr = new System.IO.StreamReader(rs, UTF8EncodingNoBOM))
+            using (var jtr = new Newtonsoft.Json.JsonTextReader(tr))
+            {
+                object result = _json.Deserialize(jtr, type);
+                return result;
+            }
+        }
+
+        public static void SerializeXML(System.IO.Stream outputStream, object body)
+        {
+            using (var tw = new System.IO.StreamWriter(outputStream, UTF8EncodingNoBOM))
+            using (var xtw = new System.Xml.XmlTextWriter(tw))
+            {
+                // NOTE(jsd): Aware of the possible null reference on `body.GetType()`.
+                var xs = new System.Xml.Serialization.XmlSerializer(body.GetType());
+                xs.Serialize(xtw, body);
+            }
+        }
+
+        public static object DeserializeXML(System.IO.Stream rs, System.Type type)
+        {
+            using (var tr = new System.IO.StreamReader(rs, UTF8EncodingNoBOM))
+            using (var xtr = new System.Xml.XmlTextReader(tr))
+            {
+                var xs = new System.Xml.Serialization.XmlSerializer(type);
+                object result = xs.Deserialize(xtr);
+                return result;
+            }
         }
 
         private static readonly Encoding UTF8EncodingNoBOM = new UTF8Encoding(false);
@@ -45,16 +98,17 @@ namespace RESTful
 
         private sealed class AsyncExecutionState<TResponse>
         {
-            public object body { get; private set; }
+            public byte[] bodyBytes { get; private set; }
             public HttpWebRequest request { get; private set; }
             public Action<WebException> handleWebException { get; private set; }
             public Action<Exception> handleException { get; private set; }
             public Action completedWithError { get; private set; }
+            public DeserializationDelegate deserializeBody { get; private set; }
             public Action<TResponse> handleResponse { get; private set; }
 
-            public AsyncExecutionState(object body, HttpWebRequest request, Action<WebException> handleWebException, Action<Exception> handleException, Action completedWithError, Action<TResponse> handleResponse)
+            public AsyncExecutionState(byte[] bodyBytes, HttpWebRequest request, Action<WebException> handleWebException, Action<Exception> handleException, Action completedWithError, DeserializationDelegate deserializeBody, Action<TResponse> handleResponse)
             {
-                this.body = body;
+                this.bodyBytes = bodyBytes;
                 this.request = request;
                 this.handleWebException = handleWebException;
                 this.handleException = handleException;
@@ -64,7 +118,7 @@ namespace RESTful
 
             public void clear()
             {
-                body = null;
+                bodyBytes = null;
                 request = null;
                 handleException = null;
                 handleWebException = null;
@@ -72,14 +126,6 @@ namespace RESTful
                 completedWithError = null;
             }
         }
-
-        private static readonly Newtonsoft.Json.JsonSerializer _json =
-            Newtonsoft.Json.JsonSerializer.Create(
-                new Newtonsoft.Json.JsonSerializerSettings
-                {
-                    NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore
-                }
-            );
 
         private static void _completeGetResponse<TResponse>(IAsyncResult ar)
         {
@@ -110,10 +156,8 @@ namespace RESTful
             try
             {
                 using (var rs = rsp.GetResponseStream())
-                using (var tr = new System.IO.StreamReader(rs, UTF8EncodingNoBOM))
-                using (var jtr = new Newtonsoft.Json.JsonTextReader(tr))
                 {
-                    var result = _json.Deserialize<TResponse>(jtr);
+                    var result = (TResponse)r.deserializeBody(rs, typeof(TResponse));
                     r.handleResponse(result);
                 }
             }
@@ -167,11 +211,7 @@ namespace RESTful
             try
             {
                 using (reqstr)
-                using (var tw = new System.IO.StreamWriter(reqstr, UTF8EncodingNoBOM))
-                using (var jtw = new Newtonsoft.Json.JsonTextWriter(tw))
-                {
-                    _json.Serialize(jtw, r.body);
-                }
+                    reqstr.Write(r.bodyBytes, 0, r.bodyBytes.Length);
             }
             catch (WebException wex)
             {
@@ -210,6 +250,20 @@ namespace RESTful
         {
         }
 
+        private byte[] serializeBody()
+        {
+            byte[] bodyBytes = null;
+            if (_serializeBody != null)
+            {
+                using (var ms = new System.IO.MemoryStream())
+                {
+                    _serializeBody(ms);
+                    bodyBytes = ms.ToArray();
+                }
+            }
+            return bodyBytes;
+        }
+
         /// <summary>
         /// Fetches the request asynchronously and calls one of the appropriate handlers when completed (likely on a separate thread).
         /// </summary>
@@ -226,7 +280,8 @@ namespace RESTful
         {
             if (handleResponse == null) throw new ArgumentNullException("handleResponse");
 
-            _auth.Authenticate(_request);
+            _bodyBytes = serializeBody();
+            _auth.Authenticate(_request, _bodyBytes);
             _auth = null;
 
             var _handleWebException = handleWebException ?? _defaultHandleWebException;
@@ -234,11 +289,11 @@ namespace RESTful
             var _completedWithError = completedWithError ?? _defaultDoNothing;
             var _handleResponse = handleResponse;
 
-            var ast = new AsyncExecutionState<TResponse>(_body, _request, _handleWebException, _handleException, _completedWithError, _handleResponse);
+            var ast = new AsyncExecutionState<TResponse>(_bodyBytes, _request, _handleWebException, _handleException, _completedWithError, _deserializeBody, _handleResponse);
 
             try
             {
-                if (Body != null)
+                if (_bodyBytes != null)
                 {
                     // Send the body:
                     _request.BeginGetRequestStream(_completeGetRequestStream<TResponse>, ast);
@@ -269,29 +324,113 @@ namespace RESTful
         /// </summary>
         /// <typeparam name="TResponse">The type to deserialize the response object to</typeparam>
         /// <returns></returns>
-        public TResponse Fetch<TResponse>()
+        public RestfulServiceResponse<TResponse> Fetch<TResponse>()
         {
-            _auth.Authenticate(_request);
+            _bodyBytes = serializeBody();
+            _auth.Authenticate(_request, _bodyBytes);
 
-            if (Body != null)
+            if (_bodyBytes != null)
             {
-                using (var reqstr = Request.GetRequestStream())
-                using (var tw = new System.IO.StreamWriter(reqstr, UTF8EncodingNoBOM))
-                using (var jtw = new Newtonsoft.Json.JsonTextWriter(tw))
-                {
-                    _json.Serialize(jtw, Body);
-                }
+                using (var reqstr = _request.GetRequestStream())
+                    reqstr.Write(_bodyBytes, 0, _bodyBytes.Length);
             }
 
-            var rsp = (HttpWebResponse)Request.GetResponse();
+#if false
+            Console.WriteLine(String.Empty);
+            Console.WriteLine(String.Format("{0} {1}", _request.Method, _request.RequestUri.AbsoluteUri));
+            Console.WriteLine(String.Empty);
+            foreach (string hd in _request.Headers)
+            {
+                Console.WriteLine(String.Format("{0}: {1}", hd, _request.Headers[hd]));
+            }
+            Console.WriteLine(String.Empty);
+            if (_bodyBytes != null)
+            {
+                Console.WriteLine(String.Empty);
+                Console.WriteLine(UTF8EncodingNoBOM.GetString(_bodyBytes));
+                Console.WriteLine(String.Empty);
+            }
+#endif
+
+            HttpWebResponse rsp;
+            try
+            {
+                rsp = (HttpWebResponse)_request.GetResponse();
+            }
+            catch (WebException wex)
+            {
+                rsp = (HttpWebResponse)wex.Response;
+                if (rsp == null)
+                    throw wex;
+            }
+            catch
+            {
+                throw;
+            }
 
             using (var rs = rsp.GetResponseStream())
-            using (var tr = new System.IO.StreamReader(rs, UTF8EncodingNoBOM))
-            using (var jtr = new Newtonsoft.Json.JsonTextReader(tr))
             {
-                var result = _json.Deserialize<TResponse>(jtr);
+                var result = (TResponse)_deserializeBody(rs, typeof(TResponse));
+                return new RestfulServiceResponse<TResponse>(rsp.StatusCode, result);
+            }
+        }
+
+        public TResponse DeserializeResponse<TResponse>(System.IO.Stream responseStream)
+        {
+            using (responseStream)
+            {
+                var result = (TResponse)_deserializeBody(responseStream, typeof(TResponse));
                 return result;
             }
+        }
+
+        public System.IO.Stream FetchStream(out HttpStatusCode statusCode, out WebHeaderCollection responseHeaders)
+        {
+            _bodyBytes = serializeBody();
+            _auth.Authenticate(_request, _bodyBytes);
+
+            if (_bodyBytes != null)
+            {
+                using (var reqstr = _request.GetRequestStream())
+                    reqstr.Write(_bodyBytes, 0, _bodyBytes.Length);
+            }
+
+#if false
+            Console.WriteLine(String.Empty);
+            Console.WriteLine(String.Format("{0} {1}", _request.Method, _request.RequestUri.AbsoluteUri));
+            Console.WriteLine(String.Empty);
+            foreach (string hd in _request.Headers)
+            {
+                Console.WriteLine(String.Format("{0}: {1}", hd, _request.Headers[hd]));
+            }
+            Console.WriteLine(String.Empty);
+            if (_bodyBytes != null)
+            {
+                Console.WriteLine(String.Empty);
+                Console.WriteLine(UTF8EncodingNoBOM.GetString(_bodyBytes));
+                Console.WriteLine(String.Empty);
+            }
+#endif
+
+            HttpWebResponse rsp;
+            try
+            {
+                rsp = (HttpWebResponse)_request.GetResponse();
+            }
+            catch (WebException wex)
+            {
+                rsp = (HttpWebResponse)wex.Response;
+                if (rsp == null)
+                    throw wex;
+            }
+            catch
+            {
+                throw;
+            }
+
+            responseHeaders = rsp.Headers;
+            statusCode = rsp.StatusCode;
+            return rsp.GetResponseStream();
         }
 
         #endregion

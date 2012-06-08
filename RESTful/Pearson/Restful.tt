@@ -1,0 +1,106 @@
+﻿<#@ template debug="true" hostspecific="false" language="C#" #>
+<#@ output extension=".generated.cs" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #><#
+    var emptyParams = new ParameterDescriptor[0];
+
+    // Define our RESTful services and their REST methods:
+    var svcs = new ServiceDescriptor[]
+    {
+        new ServiceDescriptor()
+        {
+            ClassName = "CourseServiceClient",
+            Namespace = "WellDunne.REST.Pearson.LearningStudio",
+            DefaultBodyEncoding = BodyEncoding.Json,
+            DefaultRouteStringEncoding = QueryStringEncoding.RFC3986,
+            DefaultQueryStringEncoding = QueryStringEncoding.RFC3986,
+            PerInstanceQueryParameters = new ParameterDescriptor[0],
+            SharedQueryParameters = new ParameterDescriptor[]
+            {
+                new ParameterDescriptor("expand", OptionalValueType.CommaDelimitedString)
+            },
+            Methods = new MethodDescriptor[]
+            {
+                new MethodDescriptor()
+                {
+                    MethodName = "GetMyCourses",
+                    HttpMethod = "GET",
+                    Route = "/me/courses",
+                    QueryParameters = new ParameterDescriptor[]
+                    {
+                    }
+                },
+                new MethodDescriptor()
+                {
+                    MethodName = "GetCourseByID",
+                    HttpMethod = "GET",
+                    Route = "/courses/{courseId}",
+                    QueryParameters = new ParameterDescriptor[]
+                    {
+                        new ParameterDescriptor("courseId", RequiredValueType.Int)
+                    }
+                },
+                new MethodDescriptor()
+                {
+                    MethodName = "GetCourseByCallNumber",
+                    HttpMethod = "GET",
+                    Route = "/courses/ccn={courseCallNumber}",
+                    QueryParameters = new ParameterDescriptor[]
+                    {
+                        new ParameterDescriptor("courseCallNumber", RequiredValueType.String)
+                    }
+                },
+            }
+        },
+        // DocSharing:
+        new ServiceDescriptor()
+        {
+            ClassName = "DocSharingServiceClient",
+            Namespace = "WellDunne.REST.Pearson.LearningStudio",
+            DefaultBodyEncoding = BodyEncoding.Json,
+            DefaultRouteStringEncoding = QueryStringEncoding.RFC3986,
+            DefaultQueryStringEncoding = QueryStringEncoding.RFC3986,
+            PerInstanceQueryParameters = new ParameterDescriptor[0],
+            SharedQueryParameters = new ParameterDescriptor[0],
+            Methods = new MethodDescriptor[]
+            {
+                // GET methods:
+                new MethodDescriptor()
+                {
+                    MethodName = "GetCategoriesForCourse",
+                    HttpMethod = "GET",
+                    Route = "/courses/{courseId}/docSharingCategories",
+                    QueryParameters = new ParameterDescriptor[]
+                    {
+                        new ParameterDescriptor("courseId", RequiredValueType.Int)
+                    }
+                },
+                new MethodDescriptor()
+                {
+                    MethodName = "GetDocumentsInCategoryForCourse",
+                    HttpMethod = "GET",
+                    Route = "/courses/{courseId}/docSharingCategories/{categoryId}/docSharingDocuments",
+                    QueryParameters = new ParameterDescriptor[]
+                    {
+                        new ParameterDescriptor("courseId", RequiredValueType.Int),
+                        new ParameterDescriptor("categoryId", RequiredValueType.Int)
+                    }
+                },
+                new MethodDescriptor()
+                {
+                    MethodName = "DownloadDocument",
+                    HttpMethod = "GET",
+                    Route = "/courses/{courseId}/docSharingCategories/{categoryId}/docSharingDocuments/{documentId}/content",
+                    QueryParameters = new ParameterDescriptor[]
+                    {
+                        new ParameterDescriptor("courseId", RequiredValueType.Int),
+                        new ParameterDescriptor("categoryId", RequiredValueType.Int),
+                        new ParameterDescriptor("documentId", RequiredValueType.Int),
+                    }
+                },
+            }
+        }
+    };
+#><#@ include file="../Restful.ttinclude" #>
