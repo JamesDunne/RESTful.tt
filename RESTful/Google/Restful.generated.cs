@@ -113,6 +113,16 @@ namespace WellDunne.REST.Google.V3
             return value;
         }
 
+        private bool _optional_datetime_isSupplied(global::System.DateTime? value)
+        {
+            return value.HasValue;
+        }
+
+        private string _optional_datetime_encodeString(global::System.DateTime? value)
+        {
+            return value.Value.ToString("yyyy-MM-dd'T'hh:mm:ss.sss'-00:00'");
+        }
+
         #endregion
 
         #region Instance-level query parameters
@@ -159,19 +169,23 @@ namespace WellDunne.REST.Google.V3
             return new RestfulServiceRequest(authentication, req, null, RestfulServiceRequest.DeserializeJSON);
         }
 
-        public RestfulServiceRequest GetCalendarEvents(string calendarId, [Optional] string iCalUID, [Optional] bool? singleEvents, [Optional] bool? showDeleted, [Optional] string orderBy, [Optional] string pageToken, [Optional] string[] fields, [Optional] string requestorID)
+        public RestfulServiceRequest GetCalendarEvents(string calendarId, [Optional] string iCalUID, [Optional] bool? singleEvents, [Optional] bool? showDeleted, [Optional] global::System.DateTime? timeMin, [Optional] global::System.DateTime? timeMax, [Optional] string orderBy, [Optional] string pageToken, [Optional] string[] fields, [Optional] string requestorID)
         {
             string r_calendarId;
             if (!_required_string_isSupplied(calendarId)) throw new ArgumentNullException("calendarId");
             else r_calendarId = _required_string_encodeString(calendarId);
 
-            var _queryValues = new List<KeyValuePair<string, string>>(7);
+            var _queryValues = new List<KeyValuePair<string, string>>(9);
             if (_optional_string_isSupplied(iCalUID))
                 _queryValues.Add(new KeyValuePair<string, string>("iCalUID", _optional_string_encodeString(iCalUID)));
             if (_optional_bool_isSupplied(singleEvents))
                 _queryValues.Add(new KeyValuePair<string, string>("singleEvents", _optional_bool_encodeString(singleEvents)));
             if (_optional_bool_isSupplied(showDeleted))
                 _queryValues.Add(new KeyValuePair<string, string>("showDeleted", _optional_bool_encodeString(showDeleted)));
+            if (_optional_datetime_isSupplied(timeMin))
+                _queryValues.Add(new KeyValuePair<string, string>("timeMin", _optional_datetime_encodeString(timeMin)));
+            if (_optional_datetime_isSupplied(timeMax))
+                _queryValues.Add(new KeyValuePair<string, string>("timeMax", _optional_datetime_encodeString(timeMax)));
             if (_optional_string_isSupplied(orderBy))
                 _queryValues.Add(new KeyValuePair<string, string>("orderBy", _optional_string_encodeString(orderBy)));
             if (_optional_string_isSupplied(pageToken))
@@ -204,6 +218,21 @@ namespace WellDunne.REST.Google.V3
                 _queryValues.Add(new KeyValuePair<string, string>("xoauth_requestor_id", _optional_string_encodeString(requestorID)));
 
             var requestUri = constructRequestUri("/calendar/v3/calendars/" + EncodeRFC3986(r_calendarId) + "/events/" + EncodeRFC3986(r_eventId), _queryValues);
+            var req = (HttpWebRequest)HttpWebRequest.Create(requestUri);
+            req.Method = "GET";
+
+            return new RestfulServiceRequest(authentication, req, null, RestfulServiceRequest.DeserializeJSON);
+        }
+
+        public RestfulServiceRequest GetColors([Optional] string[] fields, [Optional] string requestorID)
+        {
+            var _queryValues = new List<KeyValuePair<string, string>>(2);
+            if (_optional_commaDelimitedString_isSupplied(fields))
+                _queryValues.Add(new KeyValuePair<string, string>("fields", _optional_commaDelimitedString_encodeString(fields)));
+            if (_optional_string_isSupplied(requestorID))
+                _queryValues.Add(new KeyValuePair<string, string>("xoauth_requestor_id", _optional_string_encodeString(requestorID)));
+
+            var requestUri = constructRequestUri("/calendar/v3/colors", _queryValues);
             var req = (HttpWebRequest)HttpWebRequest.Create(requestUri);
             req.Method = "GET";
 

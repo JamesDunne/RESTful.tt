@@ -102,17 +102,18 @@ namespace WellDunne.REST
             public HttpWebRequest request { get; private set; }
             public Action<WebException> handleWebException { get; private set; }
             public Action<Exception> handleException { get; private set; }
-            public Action completedWithError { get; private set; }
+            public Action<Exception> completedWithError { get; private set; }
             public DeserializationDelegate deserializeBody { get; private set; }
             public Action<TResponse> handleResponse { get; private set; }
 
-            public AsyncExecutionState(byte[] bodyBytes, HttpWebRequest request, Action<WebException> handleWebException, Action<Exception> handleException, Action completedWithError, DeserializationDelegate deserializeBody, Action<TResponse> handleResponse)
+            public AsyncExecutionState(byte[] bodyBytes, HttpWebRequest request, Action<WebException> handleWebException, Action<Exception> handleException, Action<Exception> completedWithError, DeserializationDelegate deserializeBody, Action<TResponse> handleResponse)
             {
                 this.bodyBytes = bodyBytes;
                 this.request = request;
                 this.handleWebException = handleWebException;
                 this.handleException = handleException;
                 this.completedWithError = completedWithError;
+                this.deserializeBody = deserializeBody;
                 this.handleResponse = handleResponse;
             }
 
@@ -124,6 +125,7 @@ namespace WellDunne.REST
                 handleWebException = null;
                 handleResponse = null;
                 completedWithError = null;
+                deserializeBody = null;
             }
         }
 
@@ -139,7 +141,7 @@ namespace WellDunne.REST
             catch (WebException wex)
             {
                 r.handleWebException(wex);
-                r.completedWithError();
+                r.completedWithError(wex);
                 r.clear();
                 r = null;
                 return;
@@ -147,7 +149,7 @@ namespace WellDunne.REST
             catch (Exception ex)
             {
                 r.handleException(ex);
-                r.completedWithError();
+                r.completedWithError(ex);
                 r.clear();
                 r = null;
                 return;
@@ -157,6 +159,7 @@ namespace WellDunne.REST
             {
                 using (var rs = rsp.GetResponseStream())
                 {
+                    Debug.Assert(r.deserializeBody != null);
                     var result = (TResponse)r.deserializeBody(rs, typeof(TResponse));
                     r.handleResponse(result);
                 }
@@ -164,13 +167,13 @@ namespace WellDunne.REST
             catch (WebException wex)
             {
                 r.handleWebException(wex);
-                r.completedWithError();
+                r.completedWithError(wex);
                 r.clear();
             }
             catch (Exception ex)
             {
                 r.handleException(ex);
-                r.completedWithError();
+                r.completedWithError(ex);
                 r.clear();
             }
             finally
@@ -192,7 +195,7 @@ namespace WellDunne.REST
             catch (WebException wex)
             {
                 r.handleWebException(wex);
-                r.completedWithError();
+                r.completedWithError(wex);
                 r.clear();
                 r = null;
                 reqstr = null;
@@ -201,7 +204,7 @@ namespace WellDunne.REST
             catch (Exception ex)
             {
                 r.handleException(ex);
-                r.completedWithError();
+                r.completedWithError(ex);
                 r.clear();
                 r = null;
                 reqstr = null;
@@ -216,7 +219,7 @@ namespace WellDunne.REST
             catch (WebException wex)
             {
                 r.handleWebException(wex);
-                r.completedWithError();
+                r.completedWithError(wex);
                 r.clear();
                 r = null;
                 reqstr = null;
@@ -225,7 +228,7 @@ namespace WellDunne.REST
             catch (Exception ex)
             {
                 r.handleException(ex);
-                r.completedWithError();
+                r.completedWithError(ex);
                 r.clear();
                 r = null;
                 reqstr = null;
@@ -241,12 +244,12 @@ namespace WellDunne.REST
             Trace.TraceError(wex.ToString());
         }
 
-        private static void _defaultHandleException(Exception wex)
+        private static void _defaultHandleException(Exception ex)
         {
-            Trace.TraceError(wex.ToString());
+            Trace.TraceError(ex.ToString());
         }
 
-        private static void _defaultDoNothing()
+        private static void _defaultDoNothing(Exception ex)
         {
         }
 
@@ -275,24 +278,25 @@ namespace WellDunne.REST
         public void FetchAsync<TResponse>(
             Action<WebException> handleWebException,
             Action<Exception> handleGenericException,
-            Action completedWithError,
+            Action<Exception> completedWithError,
             Action<TResponse> handleResponse)
         {
             if (handleResponse == null) throw new ArgumentNullException("handleResponse");
 
-            _bodyBytes = serializeBody();
-            _auth.Authenticate(_request, _bodyBytes);
-            _auth = null;
-
             var _handleWebException = handleWebException ?? _defaultHandleWebException;
             var _handleException = handleGenericException ?? _defaultHandleException;
             var _completedWithError = completedWithError ?? _defaultDoNothing;
-            var _handleResponse = handleResponse;
-
-            var ast = new AsyncExecutionState<TResponse>(_bodyBytes, _request, _handleWebException, _handleException, _completedWithError, _deserializeBody, _handleResponse);
 
             try
             {
+                _bodyBytes = serializeBody();
+                _auth.Authenticate(_request, _bodyBytes);
+                _auth = null;
+
+                var _handleResponse = handleResponse;
+
+                var ast = new AsyncExecutionState<TResponse>(_bodyBytes, _request, _handleWebException, _handleException, _completedWithError, _deserializeBody, _handleResponse);
+
                 if (_bodyBytes != null)
                 {
                     // Send the body:
@@ -306,12 +310,12 @@ namespace WellDunne.REST
             catch (WebException wex)
             {
                 _handleWebException(wex);
-                _completedWithError();
+                _completedWithError(wex);
             }
             catch (Exception ex)
             {
                 _handleException(ex);
-                _completedWithError();
+                _completedWithError(ex);
             }
         }
 

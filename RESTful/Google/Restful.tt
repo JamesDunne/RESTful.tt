@@ -36,8 +36,8 @@
                     Route = calAPI + "/users/me/calendarList",
                     QueryParameters = new ParameterDescriptor[]
                     {
-                    new ParameterDescriptor("pageToken", OptionalValueType.String),
-                    new ParameterDescriptor("showHidden", OptionalValueType.Boolean)
+                        new ParameterDescriptor("pageToken", OptionalValueType.String),
+                        new ParameterDescriptor("showHidden", OptionalValueType.Boolean)
                     }
                 },
                 new MethodDescriptor()
@@ -47,7 +47,7 @@
                     Route = calAPI + "/users/me/calendarList/{calendarId}",
                     QueryParameters = new ParameterDescriptor[]
                     {
-                    new ParameterDescriptor("calendarId", RequiredValueType.String)
+                        new ParameterDescriptor("calendarId", RequiredValueType.String)
                     }
                 },
                 new MethodDescriptor()
@@ -57,12 +57,14 @@
                     Route = calAPI + "/calendars/{calendarId}/events",
                     QueryParameters = new ParameterDescriptor[]
                     {
-                    new ParameterDescriptor("calendarId", RequiredValueType.String),
-                    new ParameterDescriptor("iCalUID", OptionalValueType.String),
-                    new ParameterDescriptor("singleEvents", OptionalValueType.Boolean),
-                    new ParameterDescriptor("showDeleted", OptionalValueType.Boolean),
-                    new ParameterDescriptor("orderBy", OptionalValueType.String),
-                    new ParameterDescriptor("pageToken", OptionalValueType.String),
+                        new ParameterDescriptor("calendarId", RequiredValueType.String),
+                        new ParameterDescriptor("iCalUID", OptionalValueType.String),
+                        new ParameterDescriptor("singleEvents", OptionalValueType.Boolean),
+                        new ParameterDescriptor("showDeleted", OptionalValueType.Boolean),
+                        new ParameterDescriptor("timeMin", OptionalValueType.DateTime),
+                        new ParameterDescriptor("timeMax", OptionalValueType.DateTime),
+                        new ParameterDescriptor("orderBy", OptionalValueType.String),
+                        new ParameterDescriptor("pageToken", OptionalValueType.String),
                     }
                 },
                 new MethodDescriptor()
@@ -72,8 +74,17 @@
                     Route = calAPI + "/calendars/{calendarId}/events/{eventId}",
                     QueryParameters = new ParameterDescriptor[]
                     {
-                    new ParameterDescriptor("calendarId", RequiredValueType.String),
-                    new ParameterDescriptor("eventId", RequiredValueType.String),
+                        new ParameterDescriptor("calendarId", RequiredValueType.String),
+                        new ParameterDescriptor("eventId", RequiredValueType.String),
+                    }
+                },
+				new MethodDescriptor()
+                {
+                    MethodName = "GetColors",
+                    HttpMethod = "GET",
+                    Route = calAPI + "/colors",
+                    QueryParameters = new ParameterDescriptor[]
+                    {
                     }
                 },
                 // POST methods:
@@ -116,7 +127,7 @@
                     Route = calAPI + "/calendars/{calendarId}/events/import",
                     QueryParameters = new ParameterDescriptor[]
                     {
-                    new ParameterDescriptor("calendarId", RequiredValueType.String)
+                        new ParameterDescriptor("calendarId", RequiredValueType.String)
                     }
                 },
                 // PUT methods:
@@ -129,7 +140,7 @@
                     Route = calAPI + "/calendars/{calendarId}",
                     QueryParameters = new ParameterDescriptor[]
                     {
-                    new ParameterDescriptor("calendarId", RequiredValueType.String)
+                        new ParameterDescriptor("calendarId", RequiredValueType.String)
                     }
                 },
                 new MethodDescriptor()
@@ -141,8 +152,8 @@
                     Route = calAPI + "/calendars/{calendarId}/events/{eventId}",
                     QueryParameters = new ParameterDescriptor[]
                     {
-                    new ParameterDescriptor("calendarId", RequiredValueType.String),
-                    new ParameterDescriptor("eventId", RequiredValueType.String)
+                        new ParameterDescriptor("calendarId", RequiredValueType.String),
+                        new ParameterDescriptor("eventId", RequiredValueType.String)
                     }
                 },
                 // DELETE methods:
@@ -155,7 +166,7 @@
                     ExcludeParameterNames = new string[] { "fields" },
                     QueryParameters = new ParameterDescriptor[]
                     {
-                    new ParameterDescriptor("calendarId", RequiredValueType.String)
+                        new ParameterDescriptor("calendarId", RequiredValueType.String)
                     }
                 },
                 new MethodDescriptor()
@@ -167,8 +178,8 @@
                     ExcludeParameterNames = new string[] { "fields" },
                     QueryParameters = new ParameterDescriptor[]
                     {
-                    new ParameterDescriptor("calendarId", RequiredValueType.String),
-                    new ParameterDescriptor("eventId", RequiredValueType.String),
+                        new ParameterDescriptor("calendarId", RequiredValueType.String),
+                        new ParameterDescriptor("eventId", RequiredValueType.String),
                     }
                 },
                 new MethodDescriptor()
@@ -178,7 +189,7 @@
                     Route = calAPI + "/users/me/calendarList/{calendarId}",
                     QueryParameters = new ParameterDescriptor[]
                     {
-                    new ParameterDescriptor("calendarId", RequiredValueType.String)
+                        new ParameterDescriptor("calendarId", RequiredValueType.String)
                     }
                 },
             }

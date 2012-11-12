@@ -489,6 +489,9 @@ namespace <#= svc.Namespace #>
         public static readonly OptionalValueType Boolean =
             new OptionalValueType("bool", typeof(bool?), @"return value.HasValue;", @"return value.ToString().ToLower();");
 
+		public static readonly OptionalValueType DateTime =
+            new OptionalValueType("datetime", typeof(DateTime?), @"return value.HasValue;", @"return value.Value.ToString(""yyyy-MM-dd'T'hh:mm:ss.sss'-00:00'"");");
+
 		public static readonly OptionalValueType DateTimeOffset =
             new OptionalValueType("datetimeoffset", typeof(DateTimeOffset?), @"return value.HasValue;", @"return value.Value.ToString(""yyyy-MM-dd'T'hh:mm:ss.ssszzz"");");
 

@@ -10,6 +10,7 @@ namespace WellDunne.REST.Pearson
 {
     public static class AccessTokens
     {
+        // NOTE: Fill these out with actual values provided by Pearson.
         private static string publicKey { get { return "eCollege.consumerKey"; } }
         private static string privateKey { get { return "eCollege.consumerSecret"; } }
         private static string applicationId { get { return ("eCollege.application_id"); } }
